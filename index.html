@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" />
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="おこづかい帳">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>おてつだい＆おこづかい帳</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#fff; --text:#222; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#111827; --soft:#eef2f7; --danger:#b91c1c; --ok:#166534; --warn:#92400e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+  button,input,select{font:inherit}
+  .app{max-width:760px;margin:auto;min-height:100vh;padding:14px 14px 90px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .title{font-weight:800;font-size:1.15rem}
+  .pill{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .muted{color:var(--muted);font-size:.9rem}
+  .big{font-size:1.7rem;font-weight:800}
+  .btn{border:0;border-radius:14px;padding:12px 14px;background:var(--accent);color:white;font-weight:700}
+  .btn.secondary{background:var(--soft);color:var(--text)}
+  .btn.ghost{background:white;color:var(--text);border:1px solid var(--line)}
+  .btn.danger{background:#fee2e2;color:var(--danger)}
+  .btn.full{width:100%}
+  .nameBtn{padding:16px;border-radius:18px;border:2px solid transparent;background:rgba(255,255,255,.88);font-weight:800;font-size:1.1rem;transition:.2s}
+  .nameBtn.active{border-color:#111827;box-shadow:0 0 0 3px rgba(17,24,39,.10);transform:translateY(-1px)}
+  body{background-size:cover;background-position:center;background-attachment:fixed;transition:background-color .25s ease}
+  .app{background:rgba(255,255,255,.10)}
+  .currentUser{font-weight:800;font-size:.9rem;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.85);margin:0 0 6px;display:inline-block}
+  .tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:10}
+  .tabs .inner{display:grid;grid-template-columns:repeat(5,1fr);max-width:760px;width:100%}
+  .tab{border:0;background:transparent;padding:15px 4px 16px;color:var(--muted);font-size:.9rem;min-height:54px}
+  .tab.active{color:var(--text);font-weight:800}
+  .section{display:none}.section.active{display:block}
+  .item{border-top:1px solid var(--line);padding:12px 0}.item:first-child{border-top:0}
+  .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:.78rem;font-weight:700;background:var(--soft)}
+  .badge.wait{background:#fef3c7;color:var(--warn)}
+  .badge.unpaid{background:#dbeafe;color:#1d4ed8}
+  .badge.paid{background:#dcfce7;color:var(--ok)}
+  .money.plus{color:var(--ok);font-weight:800}.money.minus{color:var(--danger);font-weight:800}
+  label{display:block;font-size:.85rem;color:var(--muted);margin:10px 0 4px}
+  input,select{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:white}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;justify-content:center;z-index:50}
+  .modal.show{display:flex}
+  .sheet{background:white;width:min(760px,100%);max-height:88vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px}
+  .sheet h3{margin-top:0}
+  .spacer{height:4px}
+  .right{ text-align:right}
+  .progress{height:10px;background:#eee;border-radius:999px;overflow:hidden;margin-top:8px}
+  .progress > div{height:100%;background:#111827}
+  .notice{background:#fff7ed;border:1px solid #fed7aa;padding:10px 12px;border-radius:12px;color:#9a3412;font-size:.88rem}
+  .empty{padding:22px 8px;text-align:center;color:var(--muted)}
+  .tiny{font-size:.78rem}
+  .dangerText{color:var(--danger)}
+  .messageBox{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px}
+  .messageUnread{border-left:4px solid #111827}
+  .quickGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="title">おてつだい＆おこづかい帳 <span class="muted tiny">v0.6</span></div>
+    <div style="display:flex;gap:8px;align-items:center"><button class="pill" id="installBtn" style="display:none" onclick="installApp()">インストール</button><button class="pill" id="parentBtn">親モード</button></div>
+  </div>
+
+  <div class="grid2" id="profileBtns"></div>
+  <div id="currentUserLabel" class="currentUser"></div>
+
+  <section id="home" class="section active">
+    <div class="card">
+      <div class="muted">いま持っているお金</div>
+      <div class="big" id="balance">¥0</div>
+      <div class="row" style="margin-top:10px">
+        <div><div class="muted">未払い</div><strong id="unpaidTotal">¥0</strong></div>
+        <div><div class="muted">借金残高</div><strong id="debtTotal">¥0</strong></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row"><h3 style="margin:0">お手伝い</h3><span class="muted">やったら押す</span></div>
+      <div id="choreList"></div>
+    </div>
+
+    <div class="card">
+      <div class="row"><h3 style="margin:0">その他</h3><span class="muted">自由に報告</span></div>
+      <div class="quickGrid">
+        <button class="btn secondary" onclick="reportOtherChore()">項目にないお手伝い</button>
+        <button class="btn secondary" onclick="leaveMessage()">親にメッセージ</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row"><h3 style="margin:0">最近の記録</h3><button class="btn secondary" onclick="switchTab('history')">全部見る</button></div>
+      <div id="recentHistory"></div>
+    </div>
+  </section>
+
+  <section id="money" class="section">
+    <div class="card">
+      <div class="row"><h3 style="margin:0">おこづかい帳</h3><span class="muted">見るだけ</span></div>
+      <div class="big" id="moneyBalance">¥0</div>
+      <div id="ledgerList"></div>
+    </div>
+  </section>
+
+  <section id="debt" class="section">
+    <div class="card">
+      <div class="row"><h3 style="margin:0">借金</h3><span class="muted">見るだけ</span></div>
+      <div class="big" id="debtBalance">¥0</div>
+      <div id="debtList"></div>
+    </div>
+  </section>
+
+  <section id="wishlist" class="section">
+    <div class="card">
+      <div class="row"><h3 style="margin:0">ほしいもの</h3><button class="btn" id="addWishBtn">＋ 追加</button></div>
+      <div class="card" style="margin:12px 0;background:rgba(255,255,255,.75)">
+        <div class="row">
+          <div>
+            <div class="muted">ほしいもの合計</div>
+            <div class="big" id="wishTotal">¥0</div>
+          </div>
+          <div class="right">
+            <div class="muted">いまの残高</div>
+            <strong id="wishBalance">¥0</strong>
+          </div>
+        </div>
+        <div class="muted" style="margin-top:8px" id="wishNeedText">全部買うにはあと ¥0</div>
+      </div>
+      <div id="wishList"></div>
+    </div>
+  </section>
+
+  <section id="history" class="section">
+    <div class="card">
+      <h3 style="margin-top:0">お手伝い履歴</h3>
+      <div id="helpHistory"></div>
+    </div>
+  </section>
+
+  <section id="parent" class="section">
+    <div class="card">
+      <div class="row"><h3 style="margin:0">親へのメッセージ</h3><button class="btn ghost" onclick="switchTab('home')">子ども画面へ戻る</button></div>
+      <div id="parentMessages"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">自由なお手伝い報告</h3>
+      <div id="otherChoreApprovals"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">親の確認待ち</h3>
+      <div id="approvalList"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">未払いのお手伝い</h3>
+      <div id="unpaidList"></div>
+    </div>
+    <div class="card">
+      <div class="row"><h3 style="margin:0">お金の管理</h3><span class="muted" id="parentMoneyTarget"></span></div>
+      <div class="grid2" style="margin-top:10px">
+        <button class="btn" onclick="openAddMoney()">＋ 入出金</button>
+        <button class="btn secondary" onclick="openAddDebt()">＋ 借金</button>
+      </div>
+      <div id="parentDebtList" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">設定</h3>
+      <button class="btn secondary full" onclick="openSettings()">表示名・お手伝い・PINを設定</button>
+      <div class="spacer"></div>
+      <button class="btn danger full" onclick="exportData()">データを書き出す</button>
+      <div class="spacer"></div>
+      <button class="btn ghost full" onclick="document.getElementById('importFile').click()">バックアップを読み込む</button>
+      <input id="importFile" type="file" accept=".json,application/json" style="display:none" onchange="importData(this)">
+    </div>
+  </section>
+</div>
+
+<nav class="tabs">
+  <div class="inner">
+    <button class="tab active" data-tab="home">ホーム</button>
+    <button class="tab" data-tab="money">おこづかい</button>
+    <button class="tab" data-tab="debt">借金</button>
+    <button class="tab" data-tab="wishlist">ほしいもの</button>
+    <button class="tab" data-tab="history">履歴</button>
+  </div>
+</nav>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const KEY='otsukai_app_v01';
+const defaultData={
+  pin:'0000',
+  active:'c1',
+  children:{
+    c1:{name:'長男',balance:0,themeColor:'#eaf4ff',backgroundImage:'',messages:[],otherChores:[],chores:[
+      {id:'c1a',name:'お風呂掃除',amount:100},
+      {id:'c1b',name:'食器片づけ',amount:50},
+      {id:'c1c',name:'洗濯物たたみ',amount:50}
+    ],ledger:[],helps:[],debts:[],wishes:[]},
+    c2:{name:'次男',balance:0,themeColor:'#eefbf0',backgroundImage:'',messages:[],otherChores:[],chores:[
+      {id:'c2a',name:'お風呂掃除',amount:100},
+      {id:'c2b',name:'食器片づけ',amount:50},
+      {id:'c2c',name:'洗濯物たたみ',amount:50}
+    ],ledger:[],helps:[],debts:[],wishes:[]}
+  }
+};
+let data=load();
+function load(){
+  try{
+    const x=JSON.parse(localStorage.getItem(KEY));
+    const d=x||structuredClone(defaultData);
+    d.children.c1.themeColor=d.children.c1.themeColor||'#eaf4ff';
+    d.children.c2.themeColor=d.children.c2.themeColor||'#eefbf0';
+    d.children.c1.backgroundImage=d.children.c1.backgroundImage||'';
+    d.children.c2.backgroundImage=d.children.c2.backgroundImage||'';
+    d.children.c1.messages=d.children.c1.messages||[];
+    d.children.c2.messages=d.children.c2.messages||[];
+    d.children.c1.otherChores=d.children.c1.otherChores||[];
+    d.children.c2.otherChores=d.children.c2.otherChores||[];
+    return d;
+  }catch(e){return structuredClone(defaultData)}
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function child(){return data.children[data.active]}
+function yen(n){return '¥'+Number(n||0).toLocaleString('ja-JP')}
+function now(){return new Date().toISOString()}
+function dateText(s){return new Date(s).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+function uid(p='id'){return p+Math.random().toString(36).slice(2)+Date.now().toString(36)}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]))}
+function openModal(html){sheet.innerHTML=html;modal.classList.add('show')}
+function closeModal(){modal.classList.remove('show')}
+modal.addEventListener('click',e=>{if(e.target===modal)closeModal()})
+
+function renderProfiles(){
+  profileBtns.innerHTML=Object.entries(data.children).map(([id,c])=>
+    `<button class="nameBtn ${data.active===id?'active':''}" onclick="selectChild('${id}')">${escapeHtml(c.name)}</button>`).join('');
+  currentUserLabel.textContent='いま選んでいるのは「'+child().name+'」';
+  applyTheme();
+}
+function selectChild(id){
+  const wasParent=document.getElementById('parent').classList.contains('active');
+  data.active=id;save();
+  if(wasParent){
+    document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
+    document.getElementById('parent').classList.add('active');
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    renderParent();
+  }else{
+    switchTab('home');
+  }
+}
+function applyTheme(){
+  const c=child();
+  document.body.style.backgroundColor=c.themeColor||'#f5f6f8';
+  if(c.backgroundImage){
+    document.body.style.backgroundImage=`linear-gradient(rgba(255,255,255,.72),rgba(255,255,255,.72)), url("${c.backgroundImage}")`;
+  }else{
+    document.body.style.backgroundImage='none';
+  }
+}
+function setThemeColor(v){
+  child().themeColor=v; save(); openSettings();
+}
+function setBackgroundImage(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const max=1200, scale=Math.min(1,max/Math.max(img.width,img.height));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,Math.round(img.width*scale));
+      canvas.height=Math.max(1,Math.round(img.height*scale));
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      child().backgroundImage=canvas.toDataURL('image/jpeg',0.78);
+      save(); openSettings();
+    };
+    img.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+function clearBackgroundImage(){
+  child().backgroundImage=''; save(); openSettings();
+}
+function calcUnpaid(c){return c.helps.filter(x=>x.status==='unpaid').reduce((a,b)=>a+b.amount,0)}
+function calcDebt(c){return c.debts.reduce((a,d)=>a+Math.max(0,d.amount-d.repaid),0)}
+function renderHome(){
+  const c=child();
+  balance.textContent=yen(c.balance);
+  unpaidTotal.textContent=yen(calcUnpaid(c));
+  debtTotal.textContent=yen(calcDebt(c));
+  choreList.innerHTML=c.chores.length?c.chores.map(ch=>`
+    <div class="item row">
+      <div><strong>${escapeHtml(ch.name)}</strong><div class="muted">${yen(ch.amount)}</div></div>
+      <button class="btn" onclick="doChore('${ch.id}')">やった！</button>
+    </div>`).join(''):`<div class="empty">親モードからお手伝いを追加できます</div>`;
+  const latest=[...c.helps].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,5);
+  recentHistory.innerHTML=latest.length?latest.map(helpRow).join(''):`<div class="empty">まだ記録がありません</div>`;
+}
+function helpRow(h){
+  const b=h.status==='pending'?'<span class="badge wait">確認待ち</span>':
+          h.status==='unpaid'?'<span class="badge unpaid">未払い</span>':
+          '<span class="badge paid">支払済み</span>';
+  return `<div class="item row"><div><strong>${escapeHtml(h.name)}</strong><div class="muted">${dateText(h.at)}</div></div><div class="right"><div>${yen(h.amount)}</div>${b}</div></div>`
+}
+function doChore(id){
+  const c=child(), ch=c.chores.find(x=>x.id===id);
+  if(!ch)return;
+  c.helps.push({id:uid('h'),choreId:id,name:ch.name,amount:ch.amount,status:'pending',at:now()});
+  save();
+  openModal(`<h3>登録しました</h3><p><strong>${escapeHtml(ch.name)}</strong> ${yen(ch.amount)}</p><p class="muted">親の確認待ちです。</p><button class="btn full" onclick="closeModal()">OK</button>`)
+}
+
+function reportOtherChore(){
+  openModal(`
+    <h3>項目にないお手伝い</h3>
+    <p class="muted">何をしたか書いてね。金額は親が確認して決めます。</p>
+    <label>やったこと</label>
+    <input id="otherChoreText" placeholder="例：玄関が汚れていたので掃除した">
+    <div class="spacer"></div>
+    <button class="btn full" onclick="submitOtherChore()">親に送る</button>`)
+}
+function submitOtherChore(){
+  const txt=(otherChoreText.value||'').trim();
+  if(!txt)return alert('やったことを書いてください');
+  const c=child();
+  c.otherChores.push({id:uid('oc'),text:txt,status:'pending',amount:null,at:now()});
+  save();closeModal();
+  openModal(`<h3>送りました</h3><p>${escapeHtml(txt)}</p><p class="muted">親が確認して金額を決めます。</p><button class="btn full" onclick="closeModal()">OK</button>`)
+}
+function leaveMessage(){
+  openModal(`
+    <h3>親にメッセージ</h3>
+    <label>メッセージ</label>
+    <textarea id="messageText" rows="5" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--line)" placeholder="例：このグッズを買いたいので借金したいです"></textarea>
+    <div class="spacer"></div>
+    <button class="btn full" onclick="submitMessage()">送る</button>`)
+}
+function submitMessage(){
+  const txt=(messageText.value||'').trim();
+  if(!txt)return alert('メッセージを書いてください');
+  child().messages.push({id:uid('m'),text:txt,at:now(),read:false});
+  save();closeModal();
+  openModal(`<h3>送りました</h3><p class="muted">親モードに残ります。</p><button class="btn full" onclick="closeModal()">OK</button>`)
+}
+
+function renderLedger(){
+  const c=child();
+  moneyBalance.textContent=yen(c.balance);
+  const list=[...c.ledger].sort((a,b)=>b.at.localeCompare(a.at));
+  ledgerList.innerHTML=list.length?list.map(x=>`
+   <div class="item row">
+    <div><strong>${escapeHtml(x.memo||x.type)}</strong><div class="muted">${dateText(x.at)}</div></div>
+    <div class="${x.amount>=0?'money plus':'money minus'}">${x.amount>=0?'+':''}${yen(x.amount)}</div>
+   </div>`).join(''):`<div class="empty">まだ入出金がありません</div>`;
+}
+function openAddMoney(){
+  openModal(`
+    <h3>お金を記録（親モード）</h3>
+    <p class="muted">対象：${escapeHtml(child().name)}</p>
+    <label>種類</label><select id="mType"><option value="in">入金</option><option value="out">支出</option></select>
+    <label>金額</label><input id="mAmount" type="number" min="1" inputmode="numeric">
+    <label>内容</label><input id="mMemo" placeholder="例：お年玉、カード購入">
+    <div class="spacer"></div><button class="btn full" onclick="addMoney()">保存</button>`)
+}
+function addMoney(){
+  const c=child(), amt=Number(mAmount.value);
+  if(!amt)return alert('金額を入力してください');
+  const a=mType.value==='in'?amt:-amt;
+  c.balance+=a;c.ledger.push({id:uid('l'),amount:a,memo:mMemo.value|| (a>0?'入金':'支出'),at:now(),type:'manual'});
+  save();closeModal()
+}
+function renderDebts(){
+  const c=child();debtBalance.textContent=yen(calcDebt(c));
+  debtList.innerHTML=c.debts.length?c.debts.map(d=>{
+    const rem=Math.max(0,d.amount-d.repaid);
+    return `<div class="item">
+      <div class="row"><div><strong>${escapeHtml(d.memo)}</strong><div class="muted">${dateText(d.at)}</div></div><strong>${yen(rem)} 残り</strong></div>
+      <div class="muted">借りた ${yen(d.amount)} ／ 返した ${yen(d.repaid)}</div>
+    </div>`}).join(''):`<div class="empty">借金はありません</div>`;
+}
+function openAddDebt(){
+  openModal(`
+    <h3>借りたお金を記録（親モード）</h3>
+    <p class="muted">対象：${escapeHtml(child().name)}</p>
+    <label>金額</label><input id="dAmount" type="number" min="1" inputmode="numeric">
+    <label>何のため？</label><input id="dMemo" placeholder="例：仮面ライダーのグッズ">
+    <div class="spacer"></div><button class="btn full" onclick="addDebt()">保存</button>`)
+}
+function addDebt(){
+  const c=child(),amt=Number(dAmount.value); if(!amt)return alert('金額を入力してください');
+  c.debts.push({id:uid('d'),amount:amt,repaid:0,memo:dMemo.value||'借りたお金',at:now(),repayHistory:[]});
+  save();closeModal()
+}
+function repayDebt(id){
+  const d=child().debts.find(x=>x.id===id); const rem=d.amount-d.repaid;
+  openModal(`<h3>返済</h3><p>残り ${yen(rem)}</p><label>返す金額</label><input id="rAmount" type="number" min="1" max="${rem}" inputmode="numeric">
+  <label><input id="fromBalance" type="checkbox" style="width:auto"> おこづかい残高から払う</label>
+  <div class="spacer"></div><button class="btn full" onclick="confirmRepay('${id}')">返済を記録</button>`)
+}
+function confirmRepay(id){
+  const c=child(),d=c.debts.find(x=>x.id===id),rem=d.amount-d.repaid,amt=Math.min(Number(rAmount.value),rem);
+  if(!amt)return alert('金額を入力してください');
+  if(fromBalance.checked){
+    if(c.balance<amt)return alert('おこづかい残高が足りません');
+    c.balance-=amt;c.ledger.push({id:uid('l'),amount:-amt,memo:'借金返済：'+d.memo,at:now(),type:'debt'});
+  }
+  d.repaid+=amt;d.repayHistory.push({amount:amt,at:now()});save();closeModal()
+}
+function renderWishes(){
+  const c=child();
+  const total=c.wishes.reduce((sum,w)=>sum+Number(w.price||0),0);
+  const allNeed=Math.max(0,total-c.balance);
+  wishTotal.textContent=yen(total);
+  wishBalance.textContent=yen(c.balance);
+  wishNeedText.textContent=total===0
+    ? 'ほしいものを追加してみよう'
+    : (allNeed===0 ? '今の残高で全部買えます' : '全部買うにはあと '+yen(allNeed));
+
+  wishList.innerHTML=c.wishes.length?c.wishes.map(w=>{
+    const pct=Math.max(0,Math.min(100,(c.balance/w.price)*100));
+    const need=Math.max(0,w.price-c.balance);
+    return `<div class="item">
+      <div class="row"><div><strong>${escapeHtml(w.name)}</strong><div class="muted">${yen(w.price)}</div></div><span class="badge">${w.priority||'ふつう'}</span></div>
+      <div class="progress"><div style="width:${pct}%"></div></div>
+      <div class="muted tiny" style="margin-top:5px">${need===0?'今の残高で買えます':'あと '+yen(need)}</div>
+    </div>`}).join(''):`<div class="empty">ほしいものを追加してみよう</div>`;
+}
+addWishBtn.onclick=()=>openModal(`
+  <h3>ほしいものを追加</h3>
+  <label>名前</label><input id="wName" placeholder="例：ハイキュー!!のグッズ">
+  <label>値段</label><input id="wPrice" type="number" min="1" inputmode="numeric">
+  <label>優先度</label><select id="wPri"><option>高い</option><option selected>ふつう</option><option>低い</option></select>
+  <div class="spacer"></div><button class="btn full" onclick="addWish()">保存</button>`)
+function addWish(){
+  const c=child(),price=Number(wPrice.value); if(!wName.value||!price)return alert('名前と値段を入力してください');
+  c.wishes.push({id:uid('w'),name:wName.value,price,priority:wPri.value,at:now()});save();closeModal()
+}
+function renderHistory(){
+  const c=child(),list=[...c.helps].sort((a,b)=>b.at.localeCompare(a.at));
+  helpHistory.innerHTML=list.length?list.map(helpRow).join(''):`<div class="empty">まだ記録がありません</div>`;
+}
+function requestParent(){
+  const initialNotice = data.pin==='0000'
+    ? `<div class="notice">初期PINは <strong>0000</strong> です。最初に設定画面で変更してください。</div>`
+    : '';
+  openModal(`<h3>親モード</h3><label>4桁PIN</label><input id="pinIn" type="password" inputmode="numeric" maxlength="4">
+  ${initialNotice}
+  <div class="spacer"></div><button class="btn full" onclick="enterParent()">入る</button>`)
+}
+function enterParent(){
+  if(pinIn.value!==data.pin)return alert('PINが違います');
+  closeModal();document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
+  document.getElementById('parent').classList.add('active');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));renderParent()
+}
+parentBtn.onclick=requestParent;
+function renderParent(){
+  const pending=[];
+  Object.entries(data.children).forEach(([cid,c])=>c.helps.filter(h=>h.status==='pending').forEach(h=>pending.push({cid,c,h})));
+  approvalList.innerHTML=pending.length?pending.map(({cid,c,h})=>`
+    <div class="item">
+      <div class="row"><div><strong>${escapeHtml(c.name)}：${escapeHtml(h.name)}</strong><div class="muted">${yen(h.amount)} ／ ${dateText(h.at)}</div></div></div>
+      <div class="grid2" style="margin-top:8px"><button class="btn" onclick="approveHelp('${cid}','${h.id}')">承認</button><button class="btn danger" onclick="rejectHelp('${cid}','${h.id}')">却下</button></div>
+    </div>`).join(''):`<div class="empty">確認待ちはありません</div>`;
+  const unpaid=[];
+  Object.entries(data.children).forEach(([cid,c])=>c.helps.filter(h=>h.status==='unpaid').forEach(h=>unpaid.push({cid,c,h})));
+  unpaidList.innerHTML=unpaid.length?unpaid.map(({cid,c,h})=>`
+    <div class="item row"><div><strong>${escapeHtml(c.name)}：${escapeHtml(h.name)}</strong><div class="muted">${yen(h.amount)}</div></div>
+    <button class="btn" onclick="payHelp('${cid}','${h.id}')">支払う</button></div>`).join(''):`<div class="empty">未払いはありません</div>`;
+
+  const c=child();
+  parentMoneyTarget.textContent='対象：'+c.name;
+  parentDebtList.innerHTML=c.debts.length?c.debts.map(d=>{
+    const rem=Math.max(0,d.amount-d.repaid);
+    return `<div class="item">
+      <div class="row"><div><strong>${escapeHtml(d.memo)}</strong><div class="muted">借りた ${yen(d.amount)} ／ 返した ${yen(d.repaid)}</div></div><strong>${yen(rem)} 残り</strong></div>
+      ${rem>0?`<button class="btn secondary full" style="margin-top:8px" onclick="repayDebt('${d.id}')">返済する</button>`:''}
+    </div>`}).join(''):`<div class="empty">この子の借金はありません</div>`;
+
+  const msgs=[];
+  Object.entries(data.children).forEach(([cid,ch])=>ch.messages.forEach(m=>msgs.push({cid,ch,m})));
+  msgs.sort((a,b)=>b.m.at.localeCompare(a.m.at));
+  parentMessages.innerHTML=msgs.length?msgs.map(({cid,ch,m})=>`
+    <div class="messageBox ${m.read?'':'messageUnread'}">
+      <div class="row"><strong>${escapeHtml(ch.name)}</strong><span class="muted">${dateText(m.at)}</span></div>
+      <div style="margin-top:6px">${escapeHtml(m.text)}</div>
+      <div class="row" style="margin-top:8px">
+        <span class="badge">${m.read?'既読':'未読'}</span>
+        ${m.read?'':`<button class="btn secondary" onclick="markMessageRead('${cid}','${m.id}')">既読にする</button>`}
+      </div>
+    </div>`).join(''):`<div class="empty">メッセージはありません</div>`;
+
+  const others=[];
+  Object.entries(data.children).forEach(([cid,ch])=>ch.otherChores.filter(o=>o.status==='pending').forEach(o=>others.push({cid,ch,o})));
+  otherChoreApprovals.innerHTML=others.length?others.map(({cid,ch,o})=>`
+    <div class="item">
+      <div><strong>${escapeHtml(ch.name)}</strong><div>${escapeHtml(o.text)}</div><div class="muted">${dateText(o.at)}</div></div>
+      <button class="btn full" style="margin-top:8px" onclick="approveOtherChore('${cid}','${o.id}')">金額を決めて承認</button>
+    </div>`).join(''):`<div class="empty">自由報告はありません</div>`;
+}
+
+function markMessageRead(cid,mid){
+  const m=data.children[cid].messages.find(x=>x.id===mid);
+  if(m){m.read=true;save();renderParent()}
+}
+function approveOtherChore(cid,oid){
+  const o=data.children[cid].otherChores.find(x=>x.id===oid);
+  if(!o)return;
+  openModal(`
+    <h3>自由なお手伝いを承認</h3>
+    <p><strong>${escapeHtml(data.children[cid].name)}</strong></p>
+    <p>${escapeHtml(o.text)}</p>
+    <label>金額</label>
+    <input id="otherAmount" type="number" min="0" inputmode="numeric">
+    <div class="spacer"></div>
+    <button class="btn full" onclick="confirmOtherChore('${cid}','${oid}')">承認</button>
+    <div class="spacer"></div>
+    <button class="btn danger full" onclick="rejectOtherChore('${cid}','${oid}')">却下</button>`)
+}
+function confirmOtherChore(cid,oid){
+  const c=data.children[cid],o=c.otherChores.find(x=>x.id===oid);
+  const amt=Number(otherAmount.value);
+  if(!o || Number.isNaN(amt) || amt<0)return alert('金額を入力してください');
+  o.status='approved';o.amount=amt;o.approvedAt=now();
+  c.helps.push({id:uid('h'),choreId:null,name:o.text,amount:amt,status:'unpaid',at:o.at,source:'other'});
+  save();closeModal();renderParent()
+}
+function rejectOtherChore(cid,oid){
+  const o=data.children[cid].otherChores.find(x=>x.id===oid);
+  if(o){o.status='rejected';o.rejectedAt=now()}
+  save();closeModal();renderParent()
+}
+
+function approveHelp(cid,hid){const h=data.children[cid].helps.find(x=>x.id===hid);h.status='unpaid';save();renderParent()}
+function rejectHelp(cid,hid){const c=data.children[cid];c.helps=c.helps.filter(x=>x.id!==hid);save();renderParent()}
+function payHelp(cid,hid){
+  const c=data.children[cid],h=c.helps.find(x=>x.id===hid);h.status='paid';h.paidAt=now();c.balance+=h.amount;
+  c.ledger.push({id:uid('l'),amount:h.amount,memo:'お手伝い：'+h.name,at:now(),type:'chore'});save();renderParent()
+}
+function openSettings(){
+  const c1=data.children.c1,c2=data.children.c2;
+  openModal(`<h3>設定</h3>
+    <label>長男側の表示名</label><input id="n1" value="${escapeHtml(c1.name)}">
+    <label>次男側の表示名</label><input id="n2" value="${escapeHtml(c2.name)}">
+    <label>親PIN</label><input id="newPin" type="password" inputmode="numeric" maxlength="4" value="${data.pin}">
+    <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+    <h4>見た目の設定（現在選択中：${escapeHtml(child().name)}）</h4>
+    <label>背景色</label>
+    <input id="themeColor" type="color" value="${child().themeColor||'#f5f6f8'}" onchange="setThemeColor(this.value)">
+    <label>背景画像</label>
+    <input type="file" accept="image/*" onchange="setBackgroundImage(this)">
+    ${child().backgroundImage?`<div class="spacer"></div><button class="btn ghost full" onclick="clearBackgroundImage()">背景画像を外す</button>`:''}
+    <div class="muted tiny" style="margin-top:6px">画像はこの端末内に保存されます。長男・次男で別々に設定できます。</div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+    <h4>お手伝い設定（現在選択中：${escapeHtml(child().name)}）</h4>
+    <div id="settingsChores">${child().chores.map(ch=>`<div class="item row"><div>${escapeHtml(ch.name)} <span class="muted">${yen(ch.amount)}</span></div><button class="btn danger" onclick="deleteChore('${ch.id}')">削除</button></div>`).join('')}</div>
+    <label>新しいお手伝い</label><input id="newChoreName" placeholder="例：玄関そうじ">
+    <label>金額</label><input id="newChoreAmount" type="number" min="0" inputmode="numeric">
+    <div class="spacer"></div><button class="btn secondary full" onclick="addChore()">お手伝いを追加</button>
+    <div class="spacer"></div><button class="btn full" onclick="saveSettings()">設定を保存</button>`)
+}
+function saveSettings(){
+  if(newPin.value.length!==4)return alert('PINは4桁にしてください');
+  data.children.c1.name=n1.value||'長男';data.children.c2.name=n2.value||'次男';data.pin=newPin.value;save();closeModal()
+}
+function addChore(){
+  const name=newChoreName.value,amount=Number(newChoreAmount.value); if(!name)return alert('お手伝い名を入力してください');
+  child().chores.push({id:uid('c'),name,amount});save();openSettings()
+}
+function deleteChore(id){if(confirm('このお手伝いを削除しますか？')){child().chores=child().chores.filter(x=>x.id!==id);save();openSettings()}}
+function exportData(){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='otsukai_backup.json';a.click();URL.revokeObjectURL(a.href)
+}
+function importData(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const imported=JSON.parse(reader.result);
+      if(!imported || !imported.children || !imported.children.c1 || !imported.children.c2) throw new Error('invalid');
+      if(!confirm('現在のデータをバックアップの内容で置き換えます。よろしいですか？')){input.value='';return;}
+      data=imported;
+      data.children.c1.messages=data.children.c1.messages||[];
+      data.children.c2.messages=data.children.c2.messages||[];
+      data.children.c1.otherChores=data.children.c1.otherChores||[];
+      data.children.c2.otherChores=data.children.c2.otherChores||[];
+      localStorage.setItem(KEY,JSON.stringify(data));
+      render();
+      alert('バックアップを読み込みました');
+      input.value='';
+    }catch(e){
+      alert('このファイルは読み込めませんでした');
+      input.value='';
+    }
+  };
+  reader.readAsText(file);
+}
+function render(){
+  renderProfiles();renderHome();renderLedger();renderDebts();renderWishes();renderHistory();
+  if(document.getElementById('parent').classList.contains('active'))renderParent()
+}
+function switchTab(id){
+  document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));
+}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+render();
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+  });
+}
+
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'inline-block';
+});
+async function installApp(){
+  if(!deferredPrompt){
+    alert('Chromeのメニューから「アプリをインストール」または「ホーム画面に追加」を選んでください。');
+    return;
+  }
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'none';
+}
+
+</script>
+</body>
+</html>
