@@ -1,3 +1,4 @@
+# test deploy after manual publish
 name: Deploy to Sakura
 
 on:
