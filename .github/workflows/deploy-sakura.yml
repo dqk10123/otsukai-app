@@ -30,7 +30,6 @@ jobs:
           set net:reconnect-interval-base 1
           set ftp:ssl-allow no
           set ftp:passive-mode yes
-          set ftp:use-epsv no
           pwd
           ls
           bye
