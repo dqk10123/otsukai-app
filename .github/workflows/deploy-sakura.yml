@@ -33,14 +33,13 @@ jobs:
           FTP_USER: ${{ secrets.SAKURA_FTP_USER }}
           FTP_PASSWORD: ${{ secrets.SAKURA_FTP_PASSWORD }}
         run: |
-          lftp <<'LFTP_CMDS'
+          lftp -u "$FTP_USER","$FTP_PASSWORD" "ftp://$FTP_HOST" <<'LFTP_CMDS'
           set cmd:fail-exit yes
           set net:timeout 15
           set net:max-retries 1
           set net:reconnect-interval-base 1
           set ftp:passive-mode yes
           set ftp:ssl-allow no
-          open -u "$FTP_USER","$FTP_PASSWORD" "ftp://$FTP_HOST"
-          mirror -R --delete --verbose ./dist/ /home/$FTP_USER/www/apps/parent/otsukai/
+          mirror -R --delete --verbose ./dist/ www/apps/parent/otsukai/
           bye
           LFTP_CMDS
