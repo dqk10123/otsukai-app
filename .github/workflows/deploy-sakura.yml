@@ -17,7 +17,7 @@ jobs:
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Test FTP login and list directories
+      - name: Test FTP login and listing
         env:
           FTP_HOST: ${{ secrets.SAKURA_FTP_HOST }}
           FTP_USER: ${{ secrets.SAKURA_FTP_USER }}
@@ -28,17 +28,10 @@ jobs:
           set net:timeout 15
           set net:max-retries 1
           set net:reconnect-interval-base 1
-          set ftp:passive-mode yes
           set ftp:ssl-allow no
+          set ftp:passive-mode yes
+          set ftp:use-epsv no
           pwd
-          cls -la
-          cd www
-          pwd
-          cls -la
-          cd apps
-          cd parent
-          cd otsukai
-          pwd
-          cls -la
+          ls
           bye
           LFTP_CMDS
