@@ -14,20 +14,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare deploy files
-        run: |
-          mkdir -p dist
-          cp index.html dist/
-          cp manifest.webmanifest dist/
-          cp service-worker.js dist/
-          cp icon-192.png dist/
-          cp icon-512.png dist/
-          if [ -f README.txt ]; then cp README.txt dist/; fi
-
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Deploy to Sakura via FTP
+      - name: Test FTP login and list directories
         env:
           FTP_HOST: ${{ secrets.SAKURA_FTP_HOST }}
           FTP_USER: ${{ secrets.SAKURA_FTP_USER }}
@@ -40,6 +30,15 @@ jobs:
           set net:reconnect-interval-base 1
           set ftp:passive-mode yes
           set ftp:ssl-allow no
-          mirror -R --delete --verbose ./dist/ www/apps/parent/otsukai/
+          pwd
+          cls -la
+          cd www
+          pwd
+          cls -la
+          cd apps
+          cd parent
+          cd otsukai
+          pwd
+          cls -la
           bye
           LFTP_CMDS
